@@ -5,6 +5,8 @@ from torch.autograd import Variable
 
 import numpy as np
 
+from utils import ensure_shared_grads
+
 class A3C(object):
     """A3C: Asynchronous Advantage Actor-Critic.
     """
@@ -36,6 +38,7 @@ class A3C(object):
 
     def act(self):
         self.model.load_state_dict(self.shared_model.state_dict())
+        self.model.train()
 
         log_probs, entropies, rewards, values = [], [], [], []
         for _ in range(self.t_max):
@@ -95,13 +98,13 @@ class A3C(object):
         total_loss = pi_loss + v_loss
 
         # Compute gradients using thread-specific model
-        self.model.zero_grad()
+        self.optimizer.zero_grad()
+
         total_loss.backward()
         torch.nn.utils.clip_grad_norm(self.model.parameters(), 40)
         # Copy the gradients to the globally shared model
-        self.optimizer.zero_grad()
-        for param, shared_param in zip(self.model.parameters(), self.shared_model.parameters()):
-            shared_param._grad = param.grad
+        ensure_shared_grads(self.model, self.shared_model)
+
         self.optimizer.step()
 
         self.model.unchain_backward()

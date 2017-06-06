@@ -85,7 +85,7 @@ def eval_loop(counter, args, shared_model, model_eval):
         model = copy.deepcopy(shared_model)
         model.eval()
 
-        seeds = [np.random.randint(0, 2 ** 32) for _ in range(args.n_eval)]
+        set_random_seed(np.random.randint(0, 2 ** 32))
         # Create a new experiment
         cc = CrayonClient()
         names = cc.get_experiment_names()
@@ -106,8 +106,7 @@ def eval_loop(counter, args, shared_model, model_eval):
 
             eval_start_time, eval_start_step = time.time(), counter.value
             results = []
-            for seed in seeds:
-                set_random_seed(seed)
+            for _ in range(args.n_eval):
                 model.reset_state()
                 results.append(model_eval(model, env))
                 env.reset()
