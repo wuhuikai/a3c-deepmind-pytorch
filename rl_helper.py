@@ -10,6 +10,8 @@ import torch.multiprocessing as mp
 
 from setproctitle import setproctitle
 
+import visdom
+
 from rl import EvalResult
 
 from utils import set_random_seed
@@ -80,7 +82,9 @@ def train_loop(counter, args, agent):
 def eval_loop(counter, args, shared_model, model_eval):
     try:
         SEC_PER_DAY = 24*60*60
-        
+
+        vis = visdom.Visdom(env='A3C:'+args.name)
+
         env = build_env(args.type, args, treat_life_lost_as_terminal=False)
         model = copy.deepcopy(shared_model)
         model.eval()
@@ -99,6 +103,7 @@ def eval_loop(counter, args, shared_model, model_eval):
         max_reward = None
         save_condition = args.save_intervel
         
+        rewards = []
         start_time = time.time()
         while True:
             # Sync with the shared model
@@ -106,12 +111,13 @@ def eval_loop(counter, args, shared_model, model_eval):
 
             eval_start_time, eval_start_step = time.time(), counter.value
             results = []
-            for _ in range(args.n_eval):
+            for i in range(args.n_eval):
                 model.reset_state()
-                results.append(model_eval(model, env))
+                results.append(model_eval(model, env, vis=(vis, i+1, 12)))
                 env.reset()
             eval_end_time, eval_end_step = time.time(), counter.value
             results = EvalResult(*zip(*results))
+            rewards.append((counter.value, results.reward))
 
             local_max_reward = np.max(results.reward)
             if max_reward is None or max_reward < local_max_reward:
@@ -141,6 +147,12 @@ def eval_loop(counter, args, shared_model, model_eval):
             if counter.value > save_condition:
                 save_condition += args.save_intervel
                 torch.save(model.state_dict(), os.path.join(args.model_path, 'model_iter_{}.pth'.format(counter.value)))
+
+            if counter.value >= args.n_steps or len(rewards) > 10000:
+                with open(os.path.join(args.save_path, 'rewards'), 'a+') as f:
+                    for record in rewards:
+                        f.write('{}: {}\n'.format(record[0], record[1]))
+                del rewards[:]
 
             if counter.value >= args.n_steps:
                 print('Evaluator Finished !!!')

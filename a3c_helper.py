@@ -35,8 +35,8 @@ def a3c_train(args):
         env = build_env(args.type, args)
         return A3C(model, opt, env, args.t_max, 0.99, beta=args.beta, process_idx=process_idx, phi=dqn_phi)
 
-    def model_eval_func(model, env, stuck_prevent=True):
-        return model_eval(model, env, dqn_phi, stuck_prevent=stuck_prevent)
+    def model_eval_func(model, env, **params):
+        return model_eval(model, env, dqn_phi, **params)
 
     async_train(args, creat_agent, model, model_eval_func)
 
@@ -53,22 +53,32 @@ def dqn_phi(screens):
     raw_values /= 255.0
     return raw_values
 
-def model_eval(model, env, phi, stuck_prevent=True):
+def model_eval(model, env, phi, duration=5, stuck_prevent=True, random=True, vis=None):
     if stuck_prevent:
         # a quick hack to prevent the agent from stucking
         actions = deque(maxlen=100)
+
+    if vis:
+        vis, window_id, fps = vis
+        frame_dur = 1.0 / fps
+        last_time = time.time()
 
     reward, start_time = 0, time.time()
     while True:
         state_var = Variable(torch.from_numpy(phi(env.state)).unsqueeze_(0), volatile=True)
         pout, _ = model.pi_and_v(state_var)
-        action = pout.action_indices[0]
+        action = pout.action_indices[0] if random else pout.most_probable_actions[0]
         reward += env.receive_action(action)
+
+        if vis and time.time() > last_time + frame_dur:
+            vis.image(env.current_raw_ecreen().transpose((2, 0, 1)), win=window_id)
+            last_time = time.time()
+
         if env.is_terminal:
             break
         if stuck_prevent:
             actions.append(action)
-            if actions.count(actions[0]) == actions.maxlen or time.time() - start_time > 60*5:
+            if actions.count(actions[0]) == actions.maxlen or time.time() - start_time > 60*duration:
                 break
 
     return EvalResult(reward, time.time()-start_time)

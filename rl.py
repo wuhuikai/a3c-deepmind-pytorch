@@ -19,6 +19,9 @@ class Environment(object):
     def is_terminal(self):
         pass
 
+    def current_raw_ecreen(self):
+        pass
+
     def receive_action(self, action):
         pass
 

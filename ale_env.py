@@ -44,6 +44,9 @@ class ALE(Environment):
         self.legal_actions = ale.getMinimalActionSet()
         self.reset()
 
+    def current_raw_ecreen(self):
+        return self.ale.getScreenRGB()
+
     def current_screen(self):
         # Max of two consecutive frames
         rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)

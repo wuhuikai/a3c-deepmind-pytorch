@@ -18,7 +18,7 @@ def main():
 
     parser.add_argument('--type', type=str, required=True, help='Which type of game to play [ALE]')
     parser.add_argument('--rom_path', type=str, required=True, help='Path of rom, only used when [type==ALE]')
-    parser.add_argument('--no_render', action='store_true', help='Do not render to screen')
+    parser.add_argument('--no_render', action='store_true', help='Do not render to screen (default: False)')
 
     parser.add_argument('--lr', type=float, default=7e-4, help='Learning rate (default: 7e-4)')
     parser.add_argument('--beta', type=float, default=1e-2, help='Weight for entropy (default: 1e-2)')
