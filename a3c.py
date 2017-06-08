@@ -13,7 +13,6 @@ class A3C(object):
     def __init__(self, model, optimizer, env, t_max, gamma, beta=1e-2, process_idx=0,
                  clip_reward=True, phi=lambda x: x, pi_loss_coef=1.0, v_loss_coef=0.5,
                  keep_loss_scale_same=False):
-
         # Globally shared model
         self.shared_model = model
         # Thread specific model

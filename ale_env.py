@@ -1,4 +1,5 @@
 import sys
+import time
 
 import collections
 
@@ -12,12 +13,14 @@ class ALE(Environment):
     """Arcade Learning Environment.
     """
     def __init__(self, rom_path, n_last_screens=4, frame_skip=4, treat_life_lost_as_terminal=True,
-                 crop_or_scale='scale', max_start_nullops=30, record_screen_dir=None, render=False):
+                 crop_or_scale='scale', max_start_nullops=30, record_screen_dir=None, render=False, max_episode_length=None, max_time=None):
         self.frame_skip = frame_skip
         self.n_last_screens = n_last_screens
         self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
         self.crop_or_scale = crop_or_scale
         self.max_start_nullops = max_start_nullops
+        self.max_episode_length = max_episode_length
+        self.max_time = max_time
 
         ale = ALEInterface()
         # Use numpy's random state
@@ -41,11 +44,9 @@ class ALE(Environment):
         ale.loadROM(str.encode(rom_path))
 
         self.ale = ale
+        self.__exceed_max = False
         self.legal_actions = ale.getMinimalActionSet()
         self.reset()
-
-    def current_raw_ecreen(self):
-        return self.ale.getScreenRGB()
 
     def current_screen(self):
         # Max of two consecutive frames
@@ -72,15 +73,29 @@ class ALE(Environment):
         return img
 
     @property
+    def current_raw_screen(self):
+        return self.ale.getScreenRGB()
+
+    @property
     def state(self):
         return list(self.last_screens)
 
     @property
     def is_terminal(self):
+        if self.max_time and time.time() - self.time > self.max_time:
+            self.__exceed_max = True
+            return True
+        if self.max_episode_length and self.step > self.max_episode_length:
+            self.__exceed_max = True
+            return True
         if self.treat_life_lost_as_terminal:
             return self.lives_lost or self.ale.game_over()
         else:
             return self.ale.game_over()
+
+    @property
+    def exceed_max(self):
+        return self.__exceed_max
 
     @property
     def reward(self):
@@ -91,6 +106,8 @@ class ALE(Environment):
         return len(self.legal_actions)
 
     def receive_action(self, action):
+        self.step += 1
+
         rewards = []
         for i in range(self.frame_skip):
             # Last screeen must be stored before executing the 4th action
@@ -118,7 +135,7 @@ class ALE(Environment):
         return self._reward
 
     def reset(self):
-        if self.ale.game_over():
+        if self.ale.game_over() or self.__exceed_max:
             self.ale.reset_game()
 
         if self.max_start_nullops > 0:
@@ -137,3 +154,7 @@ class ALE(Environment):
 
         self.lives_lost = False
         self.lives = self.ale.lives()
+
+        self.step = 0
+        self.time = time.time()
+        self.__exceed_max = False

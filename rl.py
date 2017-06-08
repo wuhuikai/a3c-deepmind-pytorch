@@ -19,7 +19,12 @@ class Environment(object):
     def is_terminal(self):
         pass
 
-    def current_raw_ecreen(self):
+    @property
+    def exceed_max(self):
+        pass
+
+    @property
+    def current_raw_screen(self):
         pass
 
     def receive_action(self, action):

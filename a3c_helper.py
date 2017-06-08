@@ -1,14 +1,13 @@
 import time
 import numpy as np
-from collections import deque
 
 import torch
 from torch.autograd import Variable
 
+from a3c import A3C
+
 from a3c_model import A3CLSTM
 from optimizer import RMSpropAsync
-
-from a3c import A3C
 
 from rl import EvalResult
 from rl_helper import build_env, async_train
@@ -32,7 +31,7 @@ def a3c_train(args):
     model, opt = build_master_model(n_actions, args)
 
     def creat_agent(process_idx):
-        env = build_env(args.type, args)
+        env = build_env(args.type, args, max_episode_length=args.max_episode_length)
         return A3C(model, opt, env, args.t_max, 0.99, beta=args.beta, process_idx=process_idx, phi=dqn_phi)
 
     def model_eval_func(model, env, **params):
@@ -53,11 +52,7 @@ def dqn_phi(screens):
     raw_values /= 255.0
     return raw_values
 
-def model_eval(model, env, phi, duration=5, stuck_prevent=True, random=True, vis=None):
-    if stuck_prevent:
-        # a quick hack to prevent the agent from stucking
-        actions = deque(maxlen=100)
-
+def model_eval(model, env, phi, random=True, vis=None):
     if vis:
         vis, window_id, fps = vis
         frame_dur = 1.0 / fps
@@ -71,14 +66,10 @@ def model_eval(model, env, phi, duration=5, stuck_prevent=True, random=True, vis
         reward += env.receive_action(action)
 
         if vis and time.time() > last_time + frame_dur:
-            vis.image(env.current_raw_ecreen().transpose((2, 0, 1)), win=window_id)
+            vis.image(env.current_raw_screen.transpose((2, 0, 1)), win=window_id)
             last_time = time.time()
 
         if env.is_terminal:
             break
-        if stuck_prevent:
-            actions.append(action)
-            if actions.count(actions[0]) == actions.maxlen or time.time() - start_time > 60*duration:
-                break
 
     return EvalResult(reward, time.time()-start_time)

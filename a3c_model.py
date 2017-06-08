@@ -26,6 +26,11 @@ class A3CLSTM(nn.Module, A3CModel):
         self.reset_state()
 
     def pi_and_v(self, state, keep_same_state=False):
+        if self.un_init:
+            batch_size = state.size()[0]
+            self.h, self.c = Variable(torch.zeros(batch_size, self.head.n_output_channels)), Variable(torch.zeros(batch_size, self.head.n_output_channels))
+            self.un_init = False
+
         out = self.head(state)
         h, c = self.lstm(out, (self.h, self.c))
         if not keep_same_state:
@@ -33,8 +38,10 @@ class A3CLSTM(nn.Module, A3CModel):
         return self.pi.compute_policy(h), self.v(h)
 
     def reset_state(self):
-        self.h, self.c = Variable(torch.zeros(1, self.head.n_output_channels)), Variable(torch.zeros(1, self.head.n_output_channels))
+        self.un_init = True
 
     def unchain_backward(self):
+        if self.un_init:
+            return
         self.h.detach_()
         self.c.detach_()

@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--n_steps', type=int, default=8*10**7, help='Max steps to run (default: 8e7)')
     parser.add_argument('--n_processes', type=int, default=8, help='# of training processes (default: 8)')
     parser.add_argument('--save_intervel', type=int, default=2000000, help='Frequency of model saving (default: 2000000)')
+    parser.add_argument('--max_episode_length', type=int, default=10000, help='max length of an episode (default: 10000)')
     
     parser.add_argument('--n_eval', type=int, default=10, help='# of evaluation runs per model (default: 10)')
     args = parser.parse_args()
